@@ -7,26 +7,18 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import exc
 from sqlalchemy.sql import text
 
-class DataBaseHandler:
+import tables
 
-    # def __init__(self, user, password, host, database):
-    #     try:
-    #         self._connection = psycopg2.connect(user=user,
-    #                                             password=password,
-    #                                             host=host,
-    #                                             database=database)
-    #
-    #         self._cursor = self._connection.cursor()
-    #     except (Exception, psycopg2.Error) as error:
-    #         print("Error while connecting to PostgreSQL", error)
-    #         self.close_db_connection()
-    #     except exc.SQLAlchemyError as e:
-    #         print(e)
+class DataBaseHandler:
 
     def __init__(self, user, password, database, port = 5432):
         self._engine = create_engine(f'postgresql://{user}:{password}@localhost:{port}/{database}')
         Session = sessionmaker(bind=self._engine)
         self._session = Session()
+        self.tables = {"consignment": tables.Consignment, "warehouse": tables.Warehouse,
+                       "consignment_arrival": tables.Consignment_arrival, "manufacturer": tables.Manufacturer,
+                       "product": tables.Product, "product_category": tables.ProductCategory,
+                       "volume_of_sales": tables.VolumeOfSales, "volume_of_product": tables.VolumeOfProduct}
 
 
     # def close_db_connection(self):
@@ -50,7 +42,7 @@ class DataBaseHandler:
                         f'from generate_series(1, {quantity})) as rnd;')
 
 
-    def add_random_product(self, quantity: int = 1):
+    def add_random_product(self, quantity: int = 1) -> None:
         """
         Add given number of random products
         :param quantity:
@@ -64,9 +56,10 @@ class DataBaseHandler:
                                      f'(select min(id) from cw."ProductCategory") ')
         except exc.SQLAlchemyError as e:
             print(e)
+            self.rollback()
 
 
-    def add_random_consignment(self, quantity: int = 1):
+    def add_random_consignment(self, quantity: int = 1) -> None:
         """
         Add given number of random consigments
         :param quantity:
@@ -86,8 +79,9 @@ class DataBaseHandler:
                                      f'from generate_series(1, {quantity})) as rnd;')
             except exc.SQLAlchemyError as e:
                 print(e)
+                self.rollback()
 
-    def add_random_warehouse(self, quantity: int = 1):
+    def add_random_warehouse(self, quantity: int = 1) -> None:
         """
         Add given number of random warehouses
         :param quantity:
@@ -102,8 +96,9 @@ class DataBaseHandler:
                                      f'from generate_series(1, {quantity})) as rnd;')
         except exc.SQLAlchemyError as e:
             print(e)
+            self.rollback()
 
-    def add_random_consigment_arrival(self, max_arrival_time = 60):
+    def add_random_consignment_arrival(self, max_arrival_time = 60) -> None:
         try:
             with self._engine.connect() as con:
                 result = con.execute(f'select id from cw."Consignment" where id not in '
@@ -117,22 +112,59 @@ class DataBaseHandler:
                                 f'trunc(random() * {max_arrival_time}) * \'1 day\'::interval)))')
         except exc.SQLAlchemyError as e:
             print(e)
+            self.rollback()
 
-    def add_random_volume_of_sales(self, quantity = 1):
+    def add_random_volume_of_sales(self, quantity = 1) -> None:
         try:
             with self._engine.connect() as con:
                 con.execute(f'select cw.add_random_volume_of_sales({quantity});')
                 # to see text of the function, look at the doc folder
         except exc.SQLAlchemyError as e:
             print(e)
+            self.rollback()
 
-    #TODO Промапить таблицы в объекты, сделать view и controller, добавить консольный интерфейс,
+    def add_instanse(self, instanse: tables) -> int:
+        try:
+            self._session.add(instanse)
+        except exc.SQLAlchemyError as e:
+            print(e)
+            self.rollback()
+
+
+    def delete_instance(self, instanse, id: int) -> bool:
+        res = self._session.query(instanse).filter(instanse.id == id).all()
+        if res:
+            self._session.query(instanse).filter(instanse.id == id).delete()
+            return True
+        else:
+            return False
+
+    def update_instance(self, instance: tables, id: int, new_values: dict) -> bool:
+        res = self._session.query(instance).filter(instance.id == id).all()
+        if res:
+            self._session.query(instance).filter(instance.id == id).update(new_values)
+            return True
+        else:
+            return False
+
+    def get_instanse(self, instance: tables, id: int):
+        return self._session.query(instance).filter_by(id=id).all()
+
+    def commit_changes(self):
+        self._session.commit()
+
+    def rollback(self):
+        self._session.rollback()
+
     #TODO Реализовать запросы из ТЗ и добавить их в интерфейс, добавить индексы, и скрины, что они помогают
     #TODO Прикрепить к запросам графики из pyplot
     #TODO
 
 
-db = DataBaseHandler("axel", "666524", "postgres" )
+# db = DataBaseHandler("axel", "666524", "postgres" )
 
-db.add_random_consigment_arrival()
+
+
+
+
 
