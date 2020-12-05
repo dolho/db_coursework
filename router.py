@@ -13,7 +13,7 @@ class Router:
             command = parts[0] + '/' + parts[1] + '/'
             func = self.routes.get(command)
             if func:
-                func(parts[2])
+                func()
             else:
                 print(f'Command {input} not found')
         except IndexError as e:
