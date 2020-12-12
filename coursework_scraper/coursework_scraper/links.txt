@@ -1,0 +1,74 @@
+[
+    [
+        "Ноутбуки и компьютеры",
+        "https://rozetka.com.ua/computers-notebooks/c80253/"
+    ],
+    [
+        "Смартфоны, ТВ и электроника",
+        "https://rozetka.com.ua/telefony-tv-i-ehlektronika/c4627949/"
+    ],
+    [
+        "Товары для геймеров",
+        "https://rozetka.com.ua/game-zone/c80261/"
+    ],
+    [
+        "Бытовая техника",
+        "https://bt.rozetka.com.ua/"
+    ],
+    [
+        "Товары для дома",
+        "https://rozetka.com.ua/tovary-dlya-doma/c2394287/"
+    ],
+    [
+        "Инструменты и автотовары",
+        "https://rozetka.com.ua/instrumenty-i-avtotovary/c4627858/"
+    ],
+    [
+        "Сантехника и ремонт",
+        "https://rozetka.com.ua/santekhnika-i-remont/c4628418/"
+    ],
+    [
+        "Дача, сад и огород",
+        "https://rozetka.com.ua/dacha-sad-ogorod/c2394297/"
+    ],
+    [
+        "Спорт и увлечения",
+        "https://rozetka.com.ua/sport-i-uvlecheniya/c4627893/"
+    ],
+    [
+        "Одежда, обувь и украшения",
+        "https://rozetka.com.ua/shoes_clothes/c1162030/"
+    ],
+    [
+        "Красота и здоровье",
+        "https://rozetka.com.ua/krasota-i-zdorovje/c4629305/"
+    ],
+    [
+        "Детские товары",
+        "https://rozetka.com.ua/kids/c88468/"
+    ],
+    [
+        "Канцтовары и книги",
+        "https://rozetka.com.ua/office-school-books/c4625734/"
+    ],
+    [
+        "Алкогольные напитки и продукты",
+        "https://rozetka.com.ua/alkoholnie-napitki-i-produkty/c4626923/"
+    ],
+    [
+        "Товары для бизнеса",
+        "https://rozetka.com.ua/tovary-dlya-biznesa/c4627851/"
+    ],
+    [
+        "Услуги и сервисы",
+        "https://rozetka.com.ua/uslugi-i-servisi/c4630262/"
+    ],
+    [
+        "Ко Дню св. Николая до -55%",
+        "https://rozetka.com.ua/promo/stnicholas/"
+    ],
+    [
+        "Новогодний декор",
+        "https://rozetka.com.ua/novogodniy-dekor/c368610/"
+    ]
+]

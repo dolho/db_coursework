@@ -204,7 +204,10 @@ class Controller:
                 continue
             war_id = int(war_id)
             res = list(self.db.get_fullness(war_id))
-            view.print_action("get fulness", "warehouse ", str(res[0][0] * 100) + '%')
+            if not res:
+                print("No data for such input")
+                break
+            view.print_action("get fullness", "warehouse ", str(res[0][0] * 100) + '%')
             break
 
     def get_time_in_road(self):
@@ -216,6 +219,9 @@ class Controller:
                 continue
             cons_id = int(cons_id)
             res = list(self.db.get_time_in_road(cons_id))
+            if not res:
+                print("No data for such input")
+                break
             view.print_action(f"get time in road", "consignment with id {cons_id} ", res[0][0])
             break
 
@@ -228,6 +234,9 @@ class Controller:
                 continue
             prod_id = int(prod_id)
             res = list(self.db.get_avg_time_in_road_for_product(prod_id))
+            if not res:
+                print("No data for such input")
+                break
             view.print_action("get average time in road for", f"product with id {prod_id}", res[0][0])
             break
 
@@ -246,6 +255,9 @@ class Controller:
                 continue
             manufacturer_id = int(manufacturer_id)
             res = self.db.get_all_product_consignments_from_manufacturer(manufacturer_id, prod_id)
+            if not res:
+                print("No data for such input")
+                break
             date_manufac = []
             cost = []
             for i in res:
@@ -254,6 +266,23 @@ class Controller:
             view.print_dot_plot(date_manufac, cost)
             break
 
+    def get_expected_cost_by_categ(self):
+        categ= input("Enter category name: ")
+        self.db.get_pandas_product_analyze(categ)
+
+    def get_product_name_by_id(self):
+        while True:
+            print("Enter product id ")
+            prod_id = input()
+            if not prod_id.isnumeric() or int(prod_id) < 1:
+                print("Incorrect prod_id value")
+                continue
+            break
+        res = self.db.get_product_name_by_id(prod_id)
+        if not res:
+            print("No data for such input")
+        else:
+            view.print_action("get name", "Product", str(tuple(res)))
 
     def create_date(self) -> date:
         while True:
@@ -267,3 +296,19 @@ class Controller:
                 continue
             day = input("Enter day ")
             return date(int(year), int(month),int(day))
+
+    def get_products_below_cost(self):
+        while True:
+            print("Cost")
+            cost = input()
+            if not cost.isnumeric() or int(cost) < 1:
+                print("Incorrect prod_id value")
+                continue
+            break
+        res = self.db.get_products_below_cost(cost)
+        if not res:
+            print("No data for such input")
+        else:
+            view.print_action("get below cost","produc", tuple(res))
+
+

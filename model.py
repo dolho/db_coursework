@@ -4,14 +4,21 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import exc
 from sqlalchemy.sql import text
 import tables
+import json
+import pandas
+import matplotlib.pyplot as plt
+import time
 
 
 class DataBaseHandler:
 
     def __init__(self, user, password, database, port = 5432):
         self._engine = create_engine(f'postgresql://{user}:{password}@localhost:{port}/{database}')
+        self._slave_engine = create_engine(f'postgresql://slave:666524@192.168.1.218:{port}/{database}')
         Session = sessionmaker(bind=self._engine)
+        Slave_Session = sessionmaker(bind=self._slave_engine)
         self._session = Session()
+        self._slave_session = Slave_Session()
         self.tables = {"consignment": tables.Consignment, "warehouse": tables.Warehouse,
                        "consignment_arrival": tables.Consignment_arrival, "manufacturer": tables.Manufacturer,
                        "product": tables.Product, "product_category": tables.ProductCategory,
@@ -63,16 +70,7 @@ class DataBaseHandler:
         """
         with self._engine.connect() as con:
             try:
-                con.execute(f'insert into cw."Consignment"'
-                                     f'(tonnage, date_of_manufacturing, product_id, manufacturer_id, price_per_unit)'
-                                     f'select rnd.tonnage, rnd.date_of_manufacturing, '
-                                     f'rnd.product_id, rnd.manufacturer_id, rnd.price_per_unit from '
-                                     f'(select trunc(random()*100 + 2)::int as tonnage,trunc(random()*100 + 2)::int as price_per_unit,'
-                                     f'(select timestamp \'2018-01-10\' + '
-                                     f'random() * (timestamp \'2020-06-20\' -timestamp \'2018-01-10\')) as date_of_manufacturing,'
-                                     f'trunc(random()*(select max(id) from cw."Manufacturer"))::int + 2 -(select min(id) from cw."Manufacturer") as manufacturer_id,'
-                                     f'trunc(random()*(select max(id) from cw."Product"))::int + 2 -(select min(id) from cw."Product") as product_id '
-                                     f'from generate_series(1, {quantity})) as rnd;')
+                con.execute(f'select cw.add_random_consignments({quantity})')
             except exc.SQLAlchemyError as e:
                 print(e)
                 self.rollback()
@@ -156,6 +154,14 @@ class DataBaseHandler:
                                      f'order by date_of_manufacturing ')
 
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select date_of_manufacturing, trunc(avg(price_per_unit)) '
+                                     f'from cw."Consignment" where product_id={id} '
+                                     f'group by date_of_manufacturing '
+                                     f'order by date_of_manufacturing ')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
 
@@ -169,6 +175,13 @@ class DataBaseHandler:
                                      f'date between \'{date1}\' and \'{date2}\' group by warehouse_id ')
 
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select sum(volume) from cw."VolumeOfSales" where '
+                                     f'warehouse_id = {warehouse_id} and '
+                                     f'date between \'{date1}\' and \'{date2}\' group by warehouse_id ')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
 
@@ -182,6 +195,13 @@ class DataBaseHandler:
                                      f'date between \'{date1}\' and \'{date2}\' group by product_id  ')
 
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select sum(volume) from cw."VolumeOfSales" '
+                                     f'where product_id = {product_id} and '
+                                     f'date between \'{date1}\' and \'{date2}\' group by product_id  ')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
 
@@ -192,6 +212,13 @@ class DataBaseHandler:
                                      f'/ '
                                      f'(select max_stored_tonnage from cw."Warehouse" where id = {war_id});')
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select (select sum(stored_volume) from cw."Volume_of_product" where warehouse_id = {war_id})'
+                                     f'/ '
+                                     f'(select max_stored_tonnage from cw."Warehouse" where id = {war_id});')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
 
@@ -202,6 +229,13 @@ class DataBaseHandler:
                                      f'- '
                                      f'(select date_of_manufacturing from cw."Consignment"where id = {consignment_id})')
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select (select date_of_arrival from cw."Consignment_arrival" where consignment_id = {consignment_id}) '
+                                     f'- '
+                                     f'(select date_of_manufacturing from cw."Consignment"where id = {consignment_id})')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
 
@@ -213,6 +247,14 @@ class DataBaseHandler:
                                      f'from cw."Consignment_arrival" as ca inner join cw."Consignment" as co on ca.consignment_id = co.id '
                                      f'where product_id = {prod_id}) as q')
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select trunc(avg(q.betwe)) from '
+                                     f'(select date_of_arrival - date_of_manufacturing as betwe '
+                                     f'from cw."Consignment_arrival" as ca inner join cw."Consignment" as co on ca.consignment_id = co.id '
+                                     f'where product_id = {prod_id}) as q')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
 
@@ -224,8 +266,86 @@ class DataBaseHandler:
                                      f'and product_id = {produc_id} '
                                      f'group by date_of_manufacturing')
             return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select date_of_manufacturing, trunc(avg(price_per_unit)) '
+                                     f'from cw."Consignment" where manufacturer_id = {manufact_id} '
+                                     f'and product_id = {produc_id} '
+                                     f'group by date_of_manufacturing')
+                return result
         except exc.SQLAlchemyError as e:
             print(e)
+
+    def add_main_categories_json(self):
+        categories = []
+        with open('./scraped_data/products.json', 'r') as f:
+            categories = json.loads(f.read())
+        for i in categories:
+            mcat = tables.MainCategory(i["category"], i["link"])
+            self.add_instanse(mcat)
+
+    def add_sub_categories_json(self):
+        categories = []
+        with open('./scraped_data/sub-products.json', 'r') as f:
+            categories = json.loads(f.read())
+        for i in categories:
+            main_categ_id = self._session.query(tables.MainCategory.id).filter(tables.MainCategory.category == i['category']).scalar()
+            self.add_instanse(tables.ProductCategory(i['sub_category_name'], main_categ_id, i['link']))
+
+    def add_products_json(self):
+        products = []
+        with open('./scraped_data/concrete_products.json', 'r') as f:
+            products = json.loads(f.read())
+        for i in products:
+            sub_categ_id = self._session.query(tables.ProductCategory.id).filter(
+                tables.ProductCategory.category == i['sub_category']).scalar()
+            self.add_instanse(tables.Product(i['name'], sub_categ_id, i['cost'], i['link']))
+
+    def get_pandas_product_analyze(self, category):
+        try:
+            df1 = pandas.read_sql_table('Product', self._engine, 'cw')
+            df2 = pandas.read_sql_table('ProductCategory', self._engine, 'cw')
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            df1 = pandas.read_sql_table(tables.Product, self._slave_engine)
+            df2 = pandas.read_sql_table(tables.ProductCategory, self._slave_engine)
+        except exc.SQLAlchemyError as e:
+            print(e)
+        df2 = df2.rename(columns={'id': 'category_id'})
+        df = pandas.merge(df1, df2, how='inner', on='category_id')
+        df = df[df.category==category]
+        cost = df['expected_cost'].to_list()
+        plt.ylabel(category)
+        plt.xlabel("Expected cost")
+        plt.hist(cost, bins=20)
+        plt.show()
+
+    def get_product_name_by_id(self, id):
+        try:
+            res = self._session.query(tables.Product.name).filter(tables.Product.id == id)
+            return res
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            res = self._slave_session.query(tables.Product.name).filter(tables.Product.id == id)
+            return res
+        except exc.SQLAlchemyError as e:
+            print(e)
+
+    def get_products_below_cost(self, cost):
+        try:
+            with self._engine.connect() as con:
+                result = con.execute(f'select * from cw."Product" where expected_cost < {cost}')
+            return result
+        except exc.OperationalError:
+            print("Main server is not operational. Getting info from slave server")
+            with self._slave_engine.connect() as con:
+                result = con.execute(f'select * from cw."Product" where expected_cost < {cost}')
+                return result
+        except exc.SQLAlchemyError as e:
+            print(e)
+
+
     def commit_changes(self):
         self._session.commit()
 
@@ -233,11 +353,10 @@ class DataBaseHandler:
         self._session.rollback()
 
 
+# db = DataBaseHandler('axel', 666524, 'postgres')
 
 
-db = DataBaseHandler("axel", "666524", "postgres" )
 
-# TODO Резрвирование данных, репликация данных, статистический анализ
 
 
 

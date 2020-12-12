@@ -19,6 +19,9 @@ rout.register_command("get/fullness_of_warehouse/", cont.get_fulness_of_warehous
 rout.register_command("get/time_in_road_consignment/", cont.get_time_in_road)
 rout.register_command("get/average_time_in_road_product/", cont.get_average_time_in_road_for_product)
 rout.register_command("get/price_dynamics_manufacturer/", cont.get_price_dynamics_by_manufacturer)
+rout.register_command("get/expected_cost_by_category/", cont.get_expected_cost_by_categ)
+rout.register_command("get/product_name/", cont.get_product_name_by_id)
+rout.register_command("get/products_below_cost/", cont.get_products_below_cost)
 
 print("Type get/help/ to see list of all commands")
 while True:
